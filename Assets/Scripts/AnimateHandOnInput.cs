@@ -3,8 +3,8 @@ using UnityEngine.InputSystem;
 
 public class AnimateHandOnInput : MonoBehaviour
 {
-    [SerializeField] private InputActionProperty triggerValue;
-    [SerializeField] private InputActionProperty gripValue;
+    [SerializeField] private InputActionProperty triggerAction;
+    [SerializeField] private InputActionProperty gripAction;
 
     [SerializeField] private Animator handAnimator;
 
@@ -18,20 +18,20 @@ public class AnimateHandOnInput : MonoBehaviour
 
     private void OnEnable()
     {
-        if (triggerValue != null && triggerValue.action != null)
-            triggerValue.action.Enable();
+        if (triggerAction != null && triggerAction.action != null)
+            triggerAction.action.Enable();
 
-        if (gripValue != null && gripValue.action != null)
-            gripValue.action.Enable();
+        if (gripAction != null && gripAction.action != null)
+            gripAction.action.Enable();
     }
 
     private void OnDisable()
     {
-        if (triggerValue != null && triggerValue.action != null)
-            triggerValue.action.Disable();
+        if (triggerAction != null && triggerAction.action != null)
+            triggerAction.action.Disable();
 
-        if (gripValue != null && gripValue.action != null)
-            gripValue.action.Disable();
+        if (gripAction != null && gripAction.action != null)
+            gripAction.action.Disable();
     }
 
     private void Update()
@@ -41,11 +41,11 @@ public class AnimateHandOnInput : MonoBehaviour
         float trigger = 0f;
         float grip = 0f;
 
-        if (triggerValue != null && triggerValue.action != null)
-            trigger = triggerValue.action.ReadValue<float>();
+        if (triggerAction != null && triggerAction.action != null)
+            trigger = triggerAction.action.ReadValue<float>();
 
-        if (gripValue != null && gripValue.action != null)
-            grip = gripValue.action.ReadValue<float>();
+        if (gripAction != null && gripAction.action != null)
+            grip = gripAction.action.ReadValue<float>();
 
         handAnimator.SetFloat(TriggerHash, trigger);
         handAnimator.SetFloat(GripHash, grip);
