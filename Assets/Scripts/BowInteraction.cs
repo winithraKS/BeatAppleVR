@@ -16,8 +16,12 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
     [SerializeField] private Transform startPos;
     [SerializeField] private float cooldown = 0.5f; // Cooldown time in seconds before the bow can be pulled again
     [SerializeField] private Vector3 maxOffAxisDistance = new(0.25f,0.5f,0.5f); // Radius for the second hand to be considered "holding" the bow
-    //[SerializeField] private Animator bowAnimator;
     public BowAnimationAndSound bowAnim;
+
+    [Header("Arrow")]
+    [SerializeField] private GameObject arrow;
+    [SerializeField] private float arrowSpeedMultiplier = 10f;
+    [SerializeField] private AudioClip releaseSound;
 
     bool finishedCooldown = true;
     float pullPercent = 0f;
@@ -66,8 +70,15 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
             {
                 bowString.position = s.position;
                 pullPercent = Mathf.Clamp01(pullDistance / maxOffAxisDistance.y);
-                print($"Pull distance: {pullDistance}, Pull percent: {pullPercent}");
+                //print($"Pull distance: {pullDistance}, Pull percent: {pullPercent}");
                 bowAnim.FreezeAnimationAtTargetPercent(pullPercent);
+
+                if (arrow != null)
+                {
+                    arrow.transform.position = s.position;
+                    Vector3 aimDirection = transform.position - s.position;
+                    if (aimDirection.sqrMagnitude > 0.0001f) arrow.transform.rotation = Quaternion.LookRotation(aimDirection);
+                }
             }
         }
         else
@@ -81,8 +92,6 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
     protected override void Start()
     {
         base.Start();
-        //bowAnimator.enabled = false; // Disable the animator at the start
-        //bowAnimator.speed = 0f; // Pause the animator at the start
 
         if (grabInteractable == null) grabInteractable = GetComponent<XRGrabInteractable>();
         if (bowAnim == null) bowAnim = GetComponent<BowAnimationAndSound>();
@@ -92,6 +101,18 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
     {
         // Record the very first hand that grabs the bow
         primaryHand = args.interactorObject;
+    }
+
+    public void OnHandGrabbed(SelectEnterEventArgs args)
+    {
+        if (args.interactorObject == primaryHand) return;
+        if (arrow != null)
+        {
+            arrow.SetActive(true);
+            arrow.transform.SetPositionAndRotation(transform.position, transform.rotation);
+            arrow.GetComponent<Rigidbody>().linearVelocity = Vector3.zero;
+            arrow.GetComponent<Rigidbody>().isKinematic = false;
+        }
     }
 
     public void OnAnyHandReleased(SelectExitEventArgs args)
@@ -107,6 +128,9 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
             if (pullPercent > 0.9f)
             {
                 bowAnim.AnimateBowOnSecondHandRelease();
+                Vector3 f = grabInteractable.interactorsSelecting[0].GetAttachTransform(grabInteractable).position;
+                Vector3 s = args.interactorObject.transform.position;
+                if (arrow!=null) ShootArrow(f, s);
                 StartCoroutine(CooldownCoroutine());
             }
             else
@@ -114,57 +138,21 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
                 pullPercent = 0f;
                 bowString.position = startPos.position;
                 bowAnim.FreezeAnimationAtTargetPercent(0f);
+
+                if (arrow != null)
+                {
+                    arrow.SetActive(false);
+                    arrow.GetComponent<Rigidbody>().linearVelocity = Vector3.zero;
+                }
             }
         }
     }
-
-    //void FreezeAnimationAtTargetPercent(float targetPercent)
-    //{
-    //    if (bowAnimator == null) return;
-    //    //bowAnimator.enabled = true;
-    //    // 1. Get information about the clips currently playing on the default layer (layer index 0)
-    //    AnimatorClipInfo[] clipInfo = bowAnimator.GetCurrentAnimatorClipInfo(0);
-    //    if (clipInfo.Length > 0)
-    //    {
-    //        // 2. Extract the actual AnimationClip object
-    //        AnimationClip currentClip = clipInfo[0].clip;
-    //        // 3. Calculate total frames automatically (Length in seconds * Frames Per Second)
-    //        float totalFrames = currentClip.length * currentClip.frameRate;
-    //        //float totalFrames = 52f; // Hardcoded to 52 frames for the pull animation
-    //        // 4. Ensure totalFrames is greater than 0 to prevent division by zero errors
-    //        if (totalFrames > 0f)
-    //        {
-    //            print($"Freezing animation at percent {targetPercent * 100f}% at {targetPercent * totalFrames} frames");
-    //            // 5. Get the hash ID of the currently playing state
-    //            int currentStateHash = bowAnimator.GetCurrentAnimatorStateInfo(0).fullPathHash;
-    //            // 6. Force the animator to jump to the calculated normalized time
-    //            bowAnimator.Play(currentStateHash, 0, targetPercent);
-    //            // 7. Pause the animator to freeze it at the target frame
-    //            bowAnimator.speed = 0f;
-    //            bowAnimator.Update(0f); // Force an immediate update to apply the changes
-    //        }
-    //    }
-    //}
-
-    //void AnimateBowOnSecondHandRelease()
-    //{
-    //    //FreezeAnimationAtTargetFrame(52f);
-    //    if (bowAnimator != null)
-    //    {
-    //        //bowAnimator.enabled = true;
-    //        bowAnimator.SetTrigger("Release");
-    //        bowAnimator.speed = 1f; // Resume the animator to play the release animation
-    //    }
-    //    StartCoroutine(CooldownCoroutine());
-    //}
 
     IEnumerator CooldownCoroutine()
     {
         finishedCooldown = false;
         yield return new WaitForSeconds(cooldown);
-        //bowAnimator.enabled = false;
         finishedCooldown = true;
-        //bowAnimator.speed = 0f; // Pause the animator after the cooldown
     }
 
     // XRI calls this before allowing any interactor (hand) to grab the object
@@ -187,5 +175,29 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
             Transform s = grabInteractable.interactorsSelecting[1].GetAttachTransform(grabInteractable);
             bowString.position = s.position;
         }
+    }
+
+    private void ShootArrow(Vector3 firstHandPosition, Vector3 secondHandPosition)
+    {
+        if (arrow == null) return;
+        Debug.Log("Shoot!");
+        Rigidbody arrowRb = arrow.GetComponent<Rigidbody>();
+        if (arrowRb != null)
+        {
+            // Enable physics for flight
+            arrowRb.isKinematic = false;
+            //Vector3 firstHandPosition = GetHandPosition(isFirstHandLeft);
+            //Vector3 secondHandPosition = GetHandPosition(!isFirstHandLeft);
+
+            // Calculate launch speed proportional to the distance between the two hands
+            float drawDistance = Vector3.Distance(firstHandPosition, secondHandPosition);
+            float finalSpeed = drawDistance * arrowSpeedMultiplier;
+            Debug.Log($"drawDistance: {drawDistance}, finalSpeed: {finalSpeed}");
+
+            // Propel the arrow forward
+            arrowRb.linearVelocity = arrow.transform.forward * finalSpeed;
+        }
+
+        if (releaseSound != null) AudioSource.PlayClipAtPoint(releaseSound, transform.position);
     }
 }

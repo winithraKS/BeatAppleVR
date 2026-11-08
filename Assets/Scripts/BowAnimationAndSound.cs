@@ -29,7 +29,7 @@ public class BowAnimationAndSound : MonoBehaviour
             // 4. Ensure totalFrames is greater than 0 to prevent division by zero errors
             if (totalFrames > 0f)
             {
-                print($"Freezing animation at percent {targetPercent * 100f}% at {targetPercent * totalFrames} frames");
+                //print($"Freezing animation at percent {targetPercent * 100f}% at {targetPercent * totalFrames} frames");
                 // 5. Get the hash ID of the currently playing state
                 int currentStateHash = anim.GetCurrentAnimatorStateInfo(0).fullPathHash;
                 // 6. Force the animator to jump to the calculated normalized time
@@ -50,8 +50,8 @@ public class BowAnimationAndSound : MonoBehaviour
             anim.SetTrigger("Release");
             anim.speed = 1f; // Resume the animator to play the release animation
         }
-        //if (releaseWoArrow != null) GetComponent<AudioSource>().PlayOneShot(releaseWoArrow);
-        if (releaseWoArrow != null) AudioSource.PlayClipAtPoint(releaseWoArrow,transform.position);
+
+        //if (releaseWoArrow != null) AudioSource.PlayClipAtPoint(releaseWoArrow,transform.position);
     }
 
     private void OnFinishAnimateBowRelease()
