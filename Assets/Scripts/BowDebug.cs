@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.XR.Interaction.Toolkit;
@@ -12,6 +13,18 @@ public class BowDebug : MonoBehaviour
     [SerializeField] private AudioClip rGrab;
     [SerializeField] private AudioClip debugOn;
     [SerializeField] private AudioClip debugOff;
+
+    [Header("Arrow")]
+    [SerializeField] private GameObject arrow;
+    [SerializeField] private Vector2 dis_mul;
+    private Pose startPos;
+    private Coroutine arrowCountdownCoroutine;
+
+    private void Start()
+    {
+        startPos = new Pose(arrow.transform.position, arrow.transform.rotation);
+        arrow.SetActive(false);
+    }
 
     public void OnHoverEntered(HoverEnterEventArgs args)
     {
@@ -56,6 +69,29 @@ public class BowDebug : MonoBehaviour
         }
     }
 
+    private void ShootArrow()
+    {
+        print("Debug Shoot!");
+        arrow.SetActive(true);
+        Rigidbody arrowRb = arrow.GetComponent<Rigidbody>();
+        arrowRb.isKinematic = true;
+        arrow.transform.SetPositionAndRotation(startPos.position, startPos.rotation);
+        arrowRb.isKinematic = false;
+        float finalSpeed = dis_mul.x * dis_mul.y;
+        Debug.Log($"drawDistance: {dis_mul.x}, finalSpeed: {finalSpeed}");
+
+        // Propel the arrow forward
+        arrowRb.linearVelocity = arrow.transform.forward * finalSpeed;
+        if (arrowCountdownCoroutine!=null) StopCoroutine(arrowCountdownCoroutine);
+        arrowCountdownCoroutine = StartCoroutine(CountdownBeforeDisableArrow());
+
+    }
+
+    IEnumerator CountdownBeforeDisableArrow()
+    {
+        yield return new WaitForSeconds(5f);
+    }
+
     private void OnEnable()
     {
         if (toggleButton != null)
@@ -69,6 +105,21 @@ public class BowDebug : MonoBehaviour
         if (toggleButton != null)
         {
             toggleButton.action.performed -= ToggleActionPerformed;
+        }
+    }
+
+    private void Update()
+    {
+        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame) ShootArrow();
+    }
+
+    private void FixedUpdate()
+    {
+        Rigidbody arrowRb = arrow.GetComponent<Rigidbody>();
+        // Rotate the arrow tip to follow its parabolic flight trajectory while airborne
+        if (arrowRb != null && !arrowRb.isKinematic && arrowRb.linearVelocity.sqrMagnitude > 0.1f)
+        {
+            arrow.transform.rotation = Quaternion.LookRotation(arrowRb.linearVelocity);
         }
     }
 }

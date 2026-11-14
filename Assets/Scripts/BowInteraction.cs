@@ -20,13 +20,16 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
 
     [Header("Arrow")]
     [SerializeField] private GameObject arrow;
+    [SerializeField] private InputActionProperty rightTrigger;
     [SerializeField] private float arrowSpeedMultiplier = 10f;
-    [SerializeField] private AudioClip releaseSound;
 
     bool finishedCooldown = true;
     float pullPercent = 0f;
     public IXRSelectInteractor primaryHand;
     private XRGrabInteractable grabInteractable;
+    private Rigidbody arrowRb;
+    private float triggerReleaseDelay;
+    Coroutine triggerReleaseDelayCoroutine;
 
     public override void Process(XRGrabInteractable grabInteractable, XRInteractionUpdateOrder.UpdatePhase updatePhase, ref Pose targetPose, ref Vector3 localScale)
     {
@@ -95,6 +98,11 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
 
         if (grabInteractable == null) grabInteractable = GetComponent<XRGrabInteractable>();
         if (bowAnim == null) bowAnim = GetComponent<BowAnimationAndSound>();
+        if (arrow != null)
+        {
+            //arrow.SetActive(false);
+            arrowRb = arrow.GetComponent<Rigidbody>();
+        }
     }
 
     public void OnFirstHandGrabbed(SelectEnterEventArgs args)
@@ -108,10 +116,10 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
         if (args.interactorObject == primaryHand) return;
         if (arrow != null)
         {
-            arrow.SetActive(true);
+            if (rightTrigger!=null) arrow.SetActive(rightTrigger.action.IsPressed());
             arrow.transform.SetPositionAndRotation(transform.position, transform.rotation);
-            arrow.GetComponent<Rigidbody>().linearVelocity = Vector3.zero;
-            arrow.GetComponent<Rigidbody>().isKinematic = false;
+            arrowRb.linearVelocity = Vector3.zero;
+            arrowRb.isKinematic = true;
         }
     }
 
@@ -123,15 +131,14 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
             primaryHand = null;
         } else
         {
-            // If the hand that just let go is NOT the primary hand, do nothing
-            //Debug.Log($"Secondary hand released. Primary hand is still holding the bow.");
+            Vector3 f = grabInteractable.interactorsSelecting[0].GetAttachTransform(grabInteractable).position;
+            Vector3 s = args.interactorObject.transform.position;
+
             if (pullPercent > 0.9f)
             {
-                bowAnim.AnimateBowOnSecondHandRelease();
-                Vector3 f = grabInteractable.interactorsSelecting[0].GetAttachTransform(grabInteractable).position;
-                Vector3 s = args.interactorObject.transform.position;
-                if (arrow!=null) ShootArrow(f, s);
+                bowAnim.AnimateBowOnSecondHandRelease(arrow.activeSelf);
                 StartCoroutine(CooldownCoroutine());
+                if (arrow != null) ShootArrow(f, s);
             }
             else
             {
@@ -141,8 +148,13 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
 
                 if (arrow != null)
                 {
-                    arrow.SetActive(false);
-                    arrow.GetComponent<Rigidbody>().linearVelocity = Vector3.zero;
+                    if (!args.isCanceled) ShootArrow(f, s);
+                    else
+                    {
+                        arrow.SetActive(false);
+                        arrowRb.linearVelocity = Vector3.zero;
+                    }
+                        
                 }
             }
         }
@@ -177,17 +189,24 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
         }
     }
 
+    private void FixedUpdate()
+    {
+        // Rotate the arrow tip to follow its parabolic flight trajectory while airborne
+        if (arrowRb != null && !arrowRb.isKinematic && arrowRb.linearVelocity.sqrMagnitude > 0.1f)
+        {
+            arrow.transform.rotation = Quaternion.LookRotation(arrowRb.linearVelocity);
+        }
+    }
+
     private void ShootArrow(Vector3 firstHandPosition, Vector3 secondHandPosition)
     {
         if (arrow == null) return;
         Debug.Log("Shoot!");
-        Rigidbody arrowRb = arrow.GetComponent<Rigidbody>();
-        if (arrowRb != null)
+        if (triggerReleaseDelay > 0) arrow.SetActive(true);
+        if (arrowRb != null && arrow.activeSelf)
         {
             // Enable physics for flight
             arrowRb.isKinematic = false;
-            //Vector3 firstHandPosition = GetHandPosition(isFirstHandLeft);
-            //Vector3 secondHandPosition = GetHandPosition(!isFirstHandLeft);
 
             // Calculate launch speed proportional to the distance between the two hands
             float drawDistance = Vector3.Distance(firstHandPosition, secondHandPosition);
@@ -197,7 +216,46 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
             // Propel the arrow forward
             arrowRb.linearVelocity = arrow.transform.forward * finalSpeed;
         }
+    }
 
-        if (releaseSound != null) AudioSource.PlayClipAtPoint(releaseSound, transform.position);
+    private void OnEnable()
+    {
+        if (rightTrigger != null && rightTrigger.action != null)
+        {
+            rightTrigger.action.performed += OnRightTriggerPressed;
+            rightTrigger.action.canceled += OnRightTriggerReleased;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (rightTrigger != null && rightTrigger.action != null)
+        {
+            rightTrigger.action.performed -= OnRightTriggerPressed;
+            rightTrigger.action.canceled -= OnRightTriggerReleased;
+        }
+    }
+
+    // Wrapper methods to bridge the event signature to your custom method
+    private void OnRightTriggerPressed(InputAction.CallbackContext ctx) => ToggleArrow(ctx, true);
+    private void OnRightTriggerReleased(InputAction.CallbackContext ctx) => ToggleArrow(ctx, false);
+
+    private void ToggleArrow(InputAction.CallbackContext ctx, bool on)
+    {
+        if (arrow == null) return;
+        if (grabInteractable.interactorsSelecting.Count < 2) return;
+        arrow.SetActive(on);
+        if (!on)
+        {
+            triggerReleaseDelay = 0.5f;
+            if (triggerReleaseDelayCoroutine != null) StopCoroutine(triggerReleaseDelayCoroutine);
+            triggerReleaseDelayCoroutine = StartCoroutine(TriggerReleaseDelayCoroutine());
+        }
+    }
+
+    IEnumerator TriggerReleaseDelayCoroutine()
+    {
+        while (triggerReleaseDelay>0f) triggerReleaseDelay -= Time.deltaTime;
+        yield return null;
     }
 }

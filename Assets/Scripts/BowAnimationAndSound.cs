@@ -4,6 +4,7 @@ public class BowAnimationAndSound : MonoBehaviour
 {
     public Animator anim;
     [SerializeField] private AudioClip releaseWoArrow;
+    [SerializeField] private AudioClip releaseWArrow;
 
     //Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -41,7 +42,7 @@ public class BowAnimationAndSound : MonoBehaviour
         }
     }
 
-    public void AnimateBowOnSecondHandRelease()
+    public void AnimateBowOnSecondHandRelease(bool hasArrow)
     {
         //FreezeAnimationAtTargetFrame(52f);
         if (anim != null)
@@ -51,7 +52,8 @@ public class BowAnimationAndSound : MonoBehaviour
             anim.speed = 1f; // Resume the animator to play the release animation
         }
 
-        //if (releaseWoArrow != null) AudioSource.PlayClipAtPoint(releaseWoArrow,transform.position);
+        if (!hasArrow && releaseWoArrow != null) AudioSource.PlayClipAtPoint(releaseWoArrow,transform.position);
+        else if (hasArrow && releaseWArrow != null) AudioSource.PlayClipAtPoint(releaseWArrow,transform.position);
     }
 
     private void OnFinishAnimateBowRelease()
