@@ -19,9 +19,10 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
     public BowAnimationAndSound bowAnim;
 
     [Header("Arrow")]
+    [SerializeField] private ArrowManager2 am;
     [SerializeField] private GameObject arrow;
     [SerializeField] private InputActionProperty rightTrigger;
-    [SerializeField] private float arrowSpeedMultiplier = 10f;
+    //[SerializeField] private float arrowSpeedMultiplier = 40f;
 
     bool finishedCooldown = true;
     float pullPercent = 0f;
@@ -138,7 +139,7 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
             {
                 bowAnim.AnimateBowOnSecondHandRelease(arrow.activeSelf);
                 StartCoroutine(CooldownCoroutine());
-                if (arrow != null) ShootArrow(f, s);
+                if (am != null) am.ShootArrow(f, s, triggerReleaseDelay);
             }
             else
             {
@@ -148,7 +149,7 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
 
                 if (arrow != null)
                 {
-                    if (!args.isCanceled) ShootArrow(f, s);
+                    if (!args.isCanceled && am!=null) am.ShootArrow(f, s, triggerReleaseDelay);
                     else
                     {
                         arrow.SetActive(false);
@@ -195,26 +196,6 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
         if (arrowRb != null && !arrowRb.isKinematic && arrowRb.linearVelocity.sqrMagnitude > 0.1f)
         {
             arrow.transform.rotation = Quaternion.LookRotation(arrowRb.linearVelocity);
-        }
-    }
-
-    private void ShootArrow(Vector3 firstHandPosition, Vector3 secondHandPosition)
-    {
-        if (arrow == null) return;
-        Debug.Log("Shoot!");
-        if (triggerReleaseDelay > 0) arrow.SetActive(true);
-        if (arrowRb != null && arrow.activeSelf)
-        {
-            // Enable physics for flight
-            arrowRb.isKinematic = false;
-
-            // Calculate launch speed proportional to the distance between the two hands
-            float drawDistance = Vector3.Distance(firstHandPosition, secondHandPosition);
-            float finalSpeed = drawDistance * arrowSpeedMultiplier;
-            Debug.Log($"drawDistance: {drawDistance}, finalSpeed: {finalSpeed}");
-
-            // Propel the arrow forward
-            arrowRb.linearVelocity = arrow.transform.forward * finalSpeed;
         }
     }
 

@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
@@ -11,25 +12,34 @@ public class TeleportActivator : MonoBehaviour
     void Start()
     {
         rayInteractor.enabled = false;
+    }
+
+    private void OnEnable()
+    {
         teleportActivateAction.action.performed += OnTeleportActivate;
-        //teleportActivateAction.action.canceled += OnTeleportDeactivate;
+        teleportActivateAction.action.canceled += OnTeleportDeactivate;
+    }
+
+    private void OnDisable()
+    {
+        teleportActivateAction.action.performed -= OnTeleportActivate;
+        teleportActivateAction.action.canceled -= OnTeleportDeactivate;
     }
 
     private void OnTeleportActivate(InputAction.CallbackContext context)
     {
-        rayInteractor.enabled = !rayInteractor.enabled;
+        rayInteractor.enabled = true;
     }
 
-    //private void OnTeleportDeactivate(InputAction.CallbackContext context)
-    //{
-    //    rayInteractor.enabled = false;
-    //}
-
-    private void Update()
+    private void OnTeleportDeactivate(InputAction.CallbackContext context)
     {
-        if (teleportActivateAction.action.WasReleasedThisFrame())
-        {
-            rayInteractor.enabled = false;
-        }
+        // Wait until the end of the frame so XRRayInteractor can complete the teleport first
+        StartCoroutine(DisableRayEndOfFrame());
+    }
+
+    private IEnumerator DisableRayEndOfFrame()
+    {
+        yield return new WaitForEndOfFrame();
+        rayInteractor.enabled = false;
     }
 }
