@@ -755,12 +755,11 @@ MonoBehaviour:
   n: 4
   gapAngle: 10
   holdDuration: 1
-  moveProvider: {fileID: 863216322}
   itemPrefab: {fileID: 3441007371755649759, guid: 4bc8316fb47f9084b9fd46d14ffcab21, type: 3}
   itemParent: {fileID: 292982746}
   progressPrefab: {fileID: 3441007371755649759, guid: e972ecb99e276e348b0837aa3a641e7d, type: 3}
   progressParent: {fileID: 1739709842}
-  leftHand: {fileID: 1590737883}
+  hand: {fileID: 1590737883}
   radialActivator:
     m_UseReference: 1
     m_Action:
@@ -773,20 +772,21 @@ MonoBehaviour:
       m_SingletonActionBindings: []
       m_Flags: 0
       m_Priority: 0
-    m_Reference: {fileID: 83097790271614945, guid: c348712bda248c246b8c49b3db54643f, type: 3}
-  leftStick:
+    m_Reference: {fileID: -5982496924579745919, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  stick:
     m_UseReference: 1
     m_Action:
-      m_Name: Left Stick
+      m_Name: Stick
       m_Type: 0
       m_ExpectedControlType: 
-      m_Id: 0d7ab63a-61c6-425b-9b5c-ffc8970c745b
+      m_Id: d7bee506-0424-474e-9f60-cc04afbbdb28
       m_Processors: 
       m_Interactions: 
       m_SingletonActionBindings: []
       m_Flags: 0
       m_Priority: 0
     m_Reference: {fileID: -60998027439631388, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  provider: {fileID: 863216322}
   choiceObject: {fileID: 1924702938}
 --- !u!1 &252266223
 GameObject:
@@ -3242,8 +3242,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1670492109}
-  - component: {fileID: 1670492110}
   - component: {fileID: 1670492111}
+  - component: {fileID: 1670492110}
   m_Layer: 0
   m_Name: Rotate
   m_TagString: Untagged

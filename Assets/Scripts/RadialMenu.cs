@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using UnityEngine.XR.Interaction.Toolkit.Locomotion;
 using UnityEngine.XR.Interaction.Toolkit.Locomotion.Movement;
 
 public interface IRadialChoice
@@ -17,7 +18,6 @@ public class RadialMenu : MonoBehaviour
     [SerializeField] private int n = 4;
     [SerializeField] private float gapAngle;
     [SerializeField] private float holdDuration = 1f;
-    [SerializeField] private ContinuousMoveProvider moveProvider;
 
     [Header("Item")]
     [SerializeField] private GameObject itemPrefab;
@@ -31,9 +31,10 @@ public class RadialMenu : MonoBehaviour
     private Image[] progressImages;
 
     [Header("Input")]
-    [SerializeField] private Transform leftHand;
+    [SerializeField] private Transform hand;
     [SerializeField] private InputActionProperty radialActivator;
-    [SerializeField] private InputActionProperty leftStick;
+    [SerializeField] private InputActionProperty stick;
+    [SerializeField] private LocomotionProvider provider;
 
     [Header("Choice")]
     [Tooltip("Only GameObject that implements IRadialChoice interface")]
@@ -137,26 +138,27 @@ public class RadialMenu : MonoBehaviour
     {
         isRadialActive = false;
         SwitchMoveAndRadial();
+        if (choice != null) choice.SelectChoice(-1);
     }
 
     void SwitchMoveAndRadial()
     {
         itemParent.gameObject.SetActive(isRadialActive);
         progressParent.gameObject.SetActive(isRadialActive);
-        moveProvider.enabled = !isRadialActive;
+        provider.enabled = !isRadialActive;
     }
 
     private void Update()
     {
         if (!isRadialActive) return;
 
-        transform.position = leftHand.position + 0.8f * leftHand.forward;
-        Vector3 rot = Quaternion.LookRotation(leftHand.forward, leftHand.up).eulerAngles;
+        transform.position = hand.position + 0.8f * hand.forward;
+        Vector3 rot = Quaternion.LookRotation(hand.forward, hand.up).eulerAngles;
         transform.rotation = Quaternion.Euler(rot.x, rot.y, 0f);
 
-        if (leftStick != null && leftStick.action != null)
+        if (stick != null && stick.action != null)
         {
-            stickDirection = leftStick.action.ReadValue<Vector2>();
+            stickDirection = stick.action.ReadValue<Vector2>();
             if (debug) stickDirection = ReadInputFromKeyboard();
             //print($"stickDirection: {stickDirection}, selectTimer: {selectTimer}");
 
@@ -182,7 +184,7 @@ public class RadialMenu : MonoBehaviour
                     if (selectTimer >= holdDuration)
                     {
                         //print($"Radial {gameObject.name} select choice {selectedIndex}!");
-                        choice.SelectChoice(selectedIndex);
+                        if (choice!=null) choice.SelectChoice(selectedIndex);
                     }
                 }
             }

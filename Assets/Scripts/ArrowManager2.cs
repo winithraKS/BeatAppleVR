@@ -51,6 +51,7 @@ public class ArrowManager2 : MonoBehaviour, IRadialChoice
             1 => Color.green,
             2 => Color.blue,
             3 => Color.purple,
+            -1 => Color.white,
             _ => renderer.material.color // Default: keep current color if choice is out of range
         };
     }
