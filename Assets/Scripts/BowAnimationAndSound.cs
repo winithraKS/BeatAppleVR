@@ -53,7 +53,7 @@ public class BowAnimationAndSound : MonoBehaviour
         }
 
         if (!hasArrow && releaseWoArrow != null) AudioSource.PlayClipAtPoint(releaseWoArrow,transform.position);
-        else if (hasArrow && releaseWArrow != null) AudioSource.PlayClipAtPoint(releaseWArrow,transform.position);
+        //else if (hasArrow && releaseWArrow != null) AudioSource.PlayClipAtPoint(releaseWArrow,transform.position);
     }
 
     private void OnFinishAnimateBowRelease()

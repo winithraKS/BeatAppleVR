@@ -19,16 +19,17 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
     public BowAnimationAndSound bowAnim;
 
     [Header("Arrow")]
-    [SerializeField] private ArrowManager2 am;
     [SerializeField] private GameObject arrow;
     [SerializeField] private InputActionProperty rightTrigger;
-    //[SerializeField] private float arrowSpeedMultiplier = 40f;
+    private Rigidbody arrowRb;
+    private ArrowManager2 am;
 
     bool finishedCooldown = true;
     float pullPercent = 0f;
+
     public IXRSelectInteractor primaryHand;
     private XRGrabInteractable grabInteractable;
-    private Rigidbody arrowRb;
+    
     private float triggerReleaseDelay;
     Coroutine triggerReleaseDelayCoroutine;
 
@@ -62,7 +63,7 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
             // 5. Combine release conditions
             bool isOffAxis = offsetVector.magnitude > maxOffAxisDistance.x; // Pulled off-axis beyond the radius limit
             bool isPulledTooFar = pullDistance > maxOffAxisDistance.y;       // Pulled backward beyond the maximum distance
-            bool isPushedForward = pullDistance < maxOffAxisDistance.z;               // Pushed forward past the start point by 5 cm (buffer to prevent accidental drops)
+            bool isPushedForward = pullDistance < maxOffAxisDistance.z;               // Pushed forward past the start point by 15 cm (buffer to prevent accidental drops)
 
             if (isOffAxis || isPulledTooFar || isPushedForward)
             {
@@ -103,6 +104,7 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
         {
             //arrow.SetActive(false);
             arrowRb = arrow.GetComponent<Rigidbody>();
+            am = arrow.GetComponent<ArrowManager2>();
         }
     }
 
@@ -115,6 +117,7 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
     public void OnHandGrabbed(SelectEnterEventArgs args)
     {
         if (args.interactorObject == primaryHand) return;
+        pullPercent = 0f;
         if (arrow != null)
         {
             if (rightTrigger!=null) arrow.SetActive(rightTrigger.action.IsPressed());
@@ -127,38 +130,35 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
     public void OnAnyHandReleased(SelectExitEventArgs args)
     {
         // If the hand that just let go IS the primary hand, clear the reference
-        if (args.interactorObject == primaryHand)
+        if (args.interactorObject == primaryHand) primaryHand = null;
+        else
         {
-            primaryHand = null;
-        } else
-        {
-            Vector3 f = grabInteractable.interactorsSelecting[0].GetAttachTransform(grabInteractable).position;
-            Vector3 s = args.interactorObject.transform.position;
-
             if (pullPercent > 0.9f)
             {
                 bowAnim.AnimateBowOnSecondHandRelease(arrow.activeSelf);
                 StartCoroutine(CooldownCoroutine());
-                if (am != null) am.ShootArrow(f, s, triggerReleaseDelay);
+                if (am!=null) am.ShootArrow(pullPercent, triggerReleaseDelay);
             }
             else
             {
-                pullPercent = 0f;
                 bowString.position = startPos.position;
                 bowAnim.FreezeAnimationAtTargetPercent(0f);
 
                 if (arrow != null)
                 {
-                    if (!args.isCanceled && am!=null) am.ShootArrow(f, s, triggerReleaseDelay);
+                    if (!args.isCanceled && am!=null && pullPercent > am.minPullPercent) am.ShootArrow(pullPercent, triggerReleaseDelay);
                     else
                     {
                         arrow.SetActive(false);
                         arrowRb.linearVelocity = Vector3.zero;
+                        if (am != null) am.HideRay();
                     }
-                        
+
                 }
             }
         }
+
+        pullPercent = 0f;
     }
 
     IEnumerator CooldownCoroutine()
@@ -187,6 +187,11 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
         {
             Transform s = grabInteractable.interactorsSelecting[1].GetAttachTransform(grabInteractable);
             bowString.position = s.position;
+
+            if (am == null) return;
+            am.StopAllCoroutines();
+            if (pullPercent > am.minPullPercent) am.DrawArrowRay(pullPercent);
+            else am.HideRay();
         }
     }
 
@@ -228,7 +233,7 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
         arrow.SetActive(on);
         if (!on)
         {
-            triggerReleaseDelay = 0.5f;
+            triggerReleaseDelay = 0.3f;
             if (triggerReleaseDelayCoroutine != null) StopCoroutine(triggerReleaseDelayCoroutine);
             triggerReleaseDelayCoroutine = StartCoroutine(TriggerReleaseDelayCoroutine());
         }
@@ -236,7 +241,10 @@ public class BowInteraction : XRBaseGrabTransformer, IXRSelectFilter
 
     IEnumerator TriggerReleaseDelayCoroutine()
     {
-        while (triggerReleaseDelay>0f) triggerReleaseDelay -= Time.deltaTime;
-        yield return null;
+        while (triggerReleaseDelay > 0f)
+        {
+            triggerReleaseDelay -= Time.deltaTime;
+            yield return null;
+        }
     }
 }

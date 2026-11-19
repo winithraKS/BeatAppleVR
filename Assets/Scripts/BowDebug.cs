@@ -23,7 +23,7 @@ public class BowDebug : MonoBehaviour
     private void Start()
     {
         startPos = new Pose(arrow.transform.position, arrow.transform.rotation);
-        arrow.SetActive(false);
+        //arrow.SetActive(false);
     }
 
     public void OnHoverEntered(HoverEnterEventArgs args)
@@ -87,6 +87,21 @@ public class BowDebug : MonoBehaviour
 
     }
 
+    private void ShootArrow2()
+    {
+        Rigidbody arrowRb = arrow.GetComponent<Rigidbody>();
+        print("Debug Shoot! 2");
+        arrow.SetActive(true);
+        arrowRb.isKinematic = true;
+        arrow.transform.SetPositionAndRotation(startPos.position, startPos.rotation);
+        arrowRb.isKinematic = false;
+        float speed = Mathf.Lerp(5f, 35f, dis_mul.y);
+        Debug.Log($"arrow speed {speed}");
+
+        // Propel the arrow forward
+        arrowRb.linearVelocity = transform.forward * speed;
+    }
+
     IEnumerator CountdownBeforeDisableArrow()
     {
         yield return new WaitForSeconds(5f);
@@ -110,7 +125,7 @@ public class BowDebug : MonoBehaviour
 
     private void Update()
     {
-        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame) ShootArrow();
+        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame) ShootArrow2();
     }
 
     private void FixedUpdate()
